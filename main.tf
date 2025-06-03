@@ -10,7 +10,7 @@ module "aws_instance_module" {
 }
 
 module "aws_security_group_module" {
-  source     = "./modules/aws_security_group"
+  source = "./modules/aws_security_group"
   # allow_cidr = "0.0.0.0/0"
 
 }
