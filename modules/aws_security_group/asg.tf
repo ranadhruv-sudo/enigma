@@ -7,7 +7,7 @@ resource "aws_security_group" "web_sg" {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = var.allow_cidr
+    cidr_blocks = ["192.168.1.1/32"]
     description = "Allow HTTP traffic from the internet"
   }
 
