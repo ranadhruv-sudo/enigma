@@ -1,15 +1,21 @@
 resource "aws_security_group" "web_sg" {
-  name_prefix = "web-sg-"
-
-
-  description = "Security group for web traffic"
+  name        = "web-sg"
+  description = "Allow HTTP and SSH"
 
   ingress {
+    description = "Allow SSH"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"] # Restrict later if needed
+  }
+
+  ingress {
+    description = "Allow HTTP"
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
-    description = "Allow HTTP traffic from the internet"
   }
 
   egress {
@@ -17,13 +23,9 @@ resource "aws_security_group" "web_sg" {
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
-    description = "Allow all outbound traffic"
-  }
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"] # Or restrict to GitHub's IP ranges
   }
 
+  tags = {
+    Name = "web-sg"
+  }
 }

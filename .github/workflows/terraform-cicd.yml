@@ -54,16 +54,15 @@ jobs:
         run: |
           echo "$PRIVATE_KEY" > private_key.pem
           chmod 600 private_key.pem
-          for i in {1..12}; do
+          for i in {1..18}; do
+            echo "⏳ Attempting SSH... try $i"
             if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -i private_key.pem ${{ secrets.EC2_USER }}@$EC2_IP "echo '✅ SSH is up'" 2>/dev/null; then
               echo "✅ SSH is ready!"
               break
-            else
-              echo "⏳ SSH not ready yet, retrying... ($i/12)"
-              sleep 10
             fi
-            if [ $i -eq 12 ]; then
-              echo "❌ Failed to SSH after 12 tries"
+            sleep 10
+            if [ $i -eq 18 ]; then
+              echo "❌ Failed to SSH after 18 tries"
               exit 1
             fi
           done
