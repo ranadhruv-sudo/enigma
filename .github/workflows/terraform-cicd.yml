@@ -50,14 +50,16 @@ jobs:
           echo "Public IP is $EC2_IP"
 
       - name: Wait for SSH to become available
-        run: |
-          for i in {1..10}; do
-            nc -zv $EC2_IP 22 && echo "✅ Port 22 is open" && exit 0
-            echo "⏳ Waiting for EC2 SSH port..."
-            sleep 10
-          done
-          echo "❌ Timeout waiting for SSH port 22"
-          exit 1
+  run: |
+    for i in {1..10}; do
+      echo "⏳ Attempt $i: Trying to SSH into $EC2_IP..."
+      ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -i ~/.ssh/id_rsa $USER@$EC2_IP "echo '✅ SSH connected'" && exit 0
+      echo "❌ SSH failed, retrying in 10 seconds..."
+      sleep 10
+    done
+    echo "❌ Timeout waiting for SSH connection"
+    exit 1
+
 
       - name: Setup SSH
         run: |
