@@ -1,6 +1,6 @@
 resource "aws_instance" "web" {
   ami               = "ami-0c02fb55956c7d316" # Amazon Linux 2 (change as needed)
-  instance_type     = "t2.micro"
+  instance_type     = "t3.micro"
   availability_zone = "us-east-1a"
 
 
