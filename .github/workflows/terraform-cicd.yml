@@ -45,8 +45,9 @@ jobs:
       - name: Get EC2 Public IP
         id: ip
         run: |
-          echo "EC2_IP=$(terraform output -raw aws_instance_public_ip)" >> $GITHUB_ENV
-          echo "Public IP is $EC2_IP"
+          EC2_IP=$(terraform output -raw aws_instance_public_ip)
+          echo "EC2_IP=$EC2_IP" >> $GITHUB_ENV
+          echo "Public IP is $EC2_IP"id: ip
 
       - name: Wait for SSH to become available
         run: |
