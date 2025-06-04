@@ -8,6 +8,7 @@ on:
 env:
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
   AWS_DEFAULT_REGION: us-east-1
 
 jobs:
@@ -43,42 +44,37 @@ jobs:
         run: terraform apply -auto-approve tfplan.binary
 
       - name: Get EC2 Public IP
-        id: ip
+        id: get_ip
         run: |
           EC2_IP=$(terraform output -raw aws_instance_public_ip)
           echo "EC2_IP=$EC2_IP" >> $GITHUB_ENV
           echo "Public IP is $EC2_IP"
 
-      - name: Wait for SSH to become available
+      - name: Wait for SSH
         run: |
-          for i in {1..10}; do
-            echo "⏳ Attempt $i: Trying SSH to $EC2_IP..."
-            if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -i ~/.ssh/id_rsa ${{ secrets.EC2_USER }}@$EC2_IP "echo '✅ SSH connected'" 2>/dev/null; then
-              echo "✅ SSH successful on attempt $i"
-              exit 0
+          echo "$PRIVATE_KEY" > private_key.pem
+          chmod 600 private_key.pem
+          for i in {1..12}; do
+            if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -i private_key.pem ${{ secrets.EC2_USER }}@$EC2_IP "echo '✅ SSH is up'" 2>/dev/null; then
+              echo "✅ SSH is ready!"
+              break
             else
-              echo "❌ SSH failed (attempt $i), retrying in 10 seconds..."
-              echo "ec2user:- ${{secrets.EC2_USER}}"
+              echo "⏳ SSH not ready yet, retrying... ($i/12)"
               sleep 10
             fi
+            if [ $i -eq 12 ]; then
+              echo "❌ Failed to SSH after 12 tries"
+              exit 1
+            fi
           done
-          echo "❌ Timeout: SSH connection could not be established after 10 attempts."
-          exit 1
-
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H $EC2_IP >> ~/.ssh/known_hosts
 
       - name: Copy app to EC2
         run: |
-          scp -o StrictHostKeyChecking=yes -r ./app ${{ secrets.EC2_USER }}@$EC2_IP:/tmp/
+          scp -o StrictHostKeyChecking=no -i private_key.pem -r ./app ${{ secrets.EC2_USER }}@$EC2_IP:/tmp/
 
       - name: Deploy app on EC2
         run: |
-          ssh ${{ secrets.EC2_USER }}@$EC2_IP << 'EOF'
+          ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.EC2_USER }}@$EC2_IP << 'EOF'
             sudo mkdir -p /var/www/html/
             sudo cp -r /tmp/app/* /var/www/html/
             sudo systemctl restart httpd || sudo systemctl restart nginx || echo "Web server not running."
