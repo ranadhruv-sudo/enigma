@@ -58,6 +58,7 @@ jobs:
               exit 0
             else
               echo "❌ SSH failed (attempt $i), retrying in 10 seconds..."
+              echo "ec2user:- ${{secrets.EC2_USER}}"
               sleep 10
             fi
           done
