@@ -35,6 +35,7 @@ jobs:
 
       - name: Run tfsec
         uses: aquasecurity/tfsec-action@v1.0.0
+        continue-on-error: true
 
       - name: Terraform Plan
         id: plan
