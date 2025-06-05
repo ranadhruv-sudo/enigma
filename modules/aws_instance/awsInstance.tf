@@ -4,6 +4,7 @@ resource "aws_instance" "web" {
   availability_zone           = "us-east-1a"
   vpc_security_group_ids      = var.security_group_ids
   associate_public_ip_address = true
+  key_name                    = "my-mac-key"
 
 
   metadata_options {
