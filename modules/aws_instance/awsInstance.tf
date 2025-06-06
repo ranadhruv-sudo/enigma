@@ -1,5 +1,5 @@
 resource "aws_instance" "web" {
-  ami                         = "ami-002db26d4a4c670c1" 
+  ami                         = "ami-002db26d4a4c670c1"
   instance_type               = "t3.micro"
   availability_zone           = "us-east-1a"
   vpc_security_group_ids      = var.security_group_ids
