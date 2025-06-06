@@ -67,14 +67,31 @@ jobs:
             fi
           done
 
-      - name: Copy app to EC2
+      - name: Upload Node.js App to EC2
         run: |
-          scp -o StrictHostKeyChecking=no -i private_key.pem -r ./app ${{ secrets.EC2_USER }}@$EC2_IP:/tmp/
+          scp -o StrictHostKeyChecking=no -i private_key.pem -r ./app $USER@$EC2_IP:/home/$USER/app
 
-      - name: Deploy app on EC2
+      - name: SSH into EC2 and Start Node.js App
         run: |
-          ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.EC2_USER }}@$EC2_IP << 'EOF'
-            sudo mkdir -p /var/www/html/
-            sudo cp -r /tmp/app/* /var/www/html/
-            sudo systemctl restart httpd || sudo systemctl restart nginx || echo "Web server not running."
+          ssh -o StrictHostKeyChecking=no -i private_key.pem $USER@$EC2_IP << 'EOF'
+            # Install Node.js + npm from NodeSource
+            curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+            sudo apt-get install -y nodejs
+
+            # Start the Node.js app
+            cd /home/$USER/app
+            npm install
+            nohup npm start > app.log 2>&1 &
           EOF
+
+      - name: Verify Node.js App is Running
+        run: |
+          echo "Waiting for the app to start..."
+          sleep 10
+          echo "Testing HTTP response at http://$EC2_IP"
+          if curl -s --connect-timeout 5 http://$EC2_IP | grep -iq "error"; then
+            echo "App responded with an error"
+            exit 1
+          else
+            echo "App responded successfully!"
+          fi
