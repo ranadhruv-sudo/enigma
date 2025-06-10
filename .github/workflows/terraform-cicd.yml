@@ -48,7 +48,7 @@ jobs:
           soft_fail: true
 
       - name: Terraform Plan
-        run: terraform plan -var-file=terraform/terraform.tfvars -out=tfplan.binary
+        run: terraform plan -var-file=terraform.tfvars -out=tfplan.binary
 
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan.binary
