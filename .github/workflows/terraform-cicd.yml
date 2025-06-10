@@ -1,0 +1,104 @@
+name: Terraform CI/CD Pipeline
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+  AWS_DEFAULT_REGION: us-east-1
+  KEY_NAME: ${{ secrets.KEY_NAME }}
+  INSTANCE_TYPE: ${{ secrets.INSTANCE_TYPE }}
+  AVAILABILITY_ZONE: ${{ secrets.AVAILABILITY_ZONE }}
+
+jobs:
+  full-pipeline:
+    name: Terraform Plan → Apply → Deploy App
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Install envsubst
+        run: sudo apt-get install -y gettext
+
+      - name: Generate terraform.tfvars from template
+        run: |
+          envsubst < terraform.tfvars > terraform.tfvars
+
+      - name: Terraform Format (All Files)
+        run: terraform fmt -recursive -check
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Run tfsec
+        uses: aquasecurity/tfsec-action@v1.0.0
+        with:
+          soft_fail: true
+
+      - name: Terraform Plan
+        run: terraform plan -var-file=terraform.tfvars -out=tfplan.binary
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan.binary
+
+      - name: Get EC2 Public IP
+        id: get_ip
+        run: |
+          EC2_IP=$(terraform output -raw aws_instance_public_ip)
+          echo "EC2_IP=$EC2_IP" >> $GITHUB_ENV
+          echo "Public IP is $EC2_IP"
+
+      - name: Wait for SSH
+        run: |
+          echo "$PRIVATE_KEY" > private_key.pem
+          chmod 600 private_key.pem
+          for i in {1..18}; do
+            echo "⏳ Attempting SSH... try $i"
+            if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -i private_key.pem ${{ secrets.EC2_USER }}@$EC2_IP "echo '✅ SSH is up'" 2>/dev/null; then
+              echo "✅ SSH is ready!"
+              break
+            fi
+            sleep 10
+            if [ $i -eq 18 ]; then
+              echo "❌ Failed to SSH after 18 tries"
+              exit 1
+            fi
+          done
+
+      - name: Upload Node.js App to EC2
+        run: |
+          scp -o StrictHostKeyChecking=no -i private_key.pem -r ./app ${{ secrets.EC2_USER }}@$EC2_IP:/home/${{ secrets.EC2_USER }}/app
+
+      - name: SSH into EC2 and Start Node.js App
+        run: |
+          ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.EC2_USER }}@$EC2_IP << 'EOF'
+            curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+            sudo apt-get install -y nodejs
+            cd /home/${{ secrets.EC2_USER }}/app
+            npm install
+            nohup npm start > app.log 2>&1 &
+          EOF
+
+      - name: Verify Node.js App is Running
+        run: |
+          echo "Waiting for the app to start..."
+          sleep 10
+          echo "Testing HTTP response at http://$EC2_IP"
+          if curl -s --connect-timeout 5 http://$EC2_IP | grep -iq "error"; then
+            echo "App responded with an error"
+            exit 1
+          else
+            echo "App responded successfully!"
+          fi

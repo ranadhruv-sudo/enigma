@@ -1,0 +1,5 @@
+key_name         = "${KEY_NAME}"
+instance_type    = "${INSTANCE_TYPE}"
+availability_zone = "${AVAILABILITY_ZONE}"
+aws_access_key = "${AWS_ACCESS_KEY_ID}"
+aws_secret_key = "${AWS_SECRET_ACCESS_KEY}"

@@ -1,11 +1,11 @@
 resource "aws_instance" "web" {
-  ami               = "ami-0c02fb55956c7d316" # Amazon Linux 2 (change as needed)
-  instance_type     = "t2.micro"
-  availability_zone = "us-east-1a"
+  ami                         = data.aws_ami.ubuntu.id
+  instance_type               = var.instance_type
+  availability_zone           = var.availability_zone
+  vpc_security_group_ids      = var.security_group_ids
+  associate_public_ip_address = true
+  key_name                    = var.key_name
 
-
-
-  vpc_security_group_ids = var.security_group_ids
 
   metadata_options {
     http_tokens = "required"
