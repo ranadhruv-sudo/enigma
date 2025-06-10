@@ -1,10 +1,10 @@
 resource "aws_instance" "web" {
   ami                         = data.aws_ami.ubuntu.id
-  instance_type               = "t3.micro"
-  availability_zone           = "us-east-1a"
+  instance_type               = var.instance_type
+  availability_zone           = var.availability_zone
   vpc_security_group_ids      = var.security_group_ids
   associate_public_ip_address = true
-  key_name                    = "my-mac-key-3"
+  key_name                    = var.key_name
 
 
   metadata_options {

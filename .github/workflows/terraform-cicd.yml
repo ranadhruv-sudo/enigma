@@ -10,6 +10,9 @@ env:
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
   AWS_DEFAULT_REGION: us-east-1
+  KEY_NAME: ${{ secrets.KEY_NAME }}
+  INSTANCE_TYPE: ${{ secrets.INSTANCE_TYPE }}
+  AVAILABILITY_ZONE: ${{ secrets.AVAILABILITY_ZONE }}
 
 jobs:
   full-pipeline:
@@ -22,6 +25,13 @@ jobs:
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
+
+      - name: Install envsubst
+        run: sudo apt-get install -y gettext
+
+      - name: Generate terraform.tfvars from template
+        run: |
+          envsubst < terraform/terraform.tfvars.template > terraform/terraform.tfvars
 
       - name: Terraform Format (All Files)
         run: terraform fmt -recursive -check
@@ -38,7 +48,7 @@ jobs:
           soft_fail: true
 
       - name: Terraform Plan
-        run: terraform plan -out=tfplan.binary
+        run: terraform plan -var-file=terraform/terraform.tfvars -out=tfplan.binary
 
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan.binary
@@ -74,11 +84,8 @@ jobs:
       - name: SSH into EC2 and Start Node.js App
         run: |
           ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.EC2_USER }}@$EC2_IP << 'EOF'
-            # Install Node.js + npm from NodeSource
             curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
             sudo apt-get install -y nodejs
-
-            # Start the Node.js app
             cd /home/${{ secrets.EC2_USER }}/app
             npm install
             nohup npm start > app.log 2>&1 &
