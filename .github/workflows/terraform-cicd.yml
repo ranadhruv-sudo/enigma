@@ -31,7 +31,7 @@ jobs:
 
       - name: Generate terraform.tfvars from template
         run: |
-          envsubst < terraform.tfvars.template > terraform.tfvars
+          envsubst < terraform.tfvars > terraform.tfvars
 
       - name: Terraform Format (All Files)
         run: terraform fmt -recursive -check
